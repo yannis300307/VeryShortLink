@@ -13,27 +13,18 @@ import humanfriendly
 import logging
 
 
-def get_env_default(env_var, default):
-    """Get data from environment variable or None if not set."""
-    var = os.environ.get(env_var)
-    if var is None:
-        return default
-    else:
-        return var
-
-
 # Delay (in seconds) before the link became inactive 
-EXPIRATION_DELAY = int(get_env_default("EXPIRATION_DELAY", "259200"))
+EXPIRATION_DELAY = int(os.getenv("EXPIRATION_DELAY", "259200"))
 
 # The maximum amount of link that can be stored at the same time in the database. 
 # Prevent potential spam bots to fill up completly the hard drive.
-MAX_LINK_AMOUNT = int(get_env_default("MAX_LINK_AMOUNT", "10000"))
+MAX_LINK_AMOUNT = int(os.getenv("MAX_LINK_AMOUNT", "10000"))
 
 # The base URL of the website
-WEBSITE_URL = get_env_default("WEBSITE_URL", "localhost")
+WEBSITE_URL = os.getenv("WEBSITE_URL", "localhost")
 
 # A forbidden websites list provider because we don't want to link to bad websites.
-FORBIDDEN_WEBSITES_LIST_PROVIDER = get_env_default("FORBIDDEN_WEBSITES_LIST_PROVIDER", "https://raw.githubusercontent.com/elbkr/bad-websites/refs/heads/main/websites.json")
+FORBIDDEN_WEBSITES_LIST_PROVIDER = os.getenv("FORBIDDEN_WEBSITES_LIST_PROVIDER", "https://raw.githubusercontent.com/elbkr/bad-websites/refs/heads/main/websites.json")
 
 
 # Init various objects
