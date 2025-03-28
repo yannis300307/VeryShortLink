@@ -6,7 +6,5 @@ services:
         environment:
             - WEBSITE_URL = "https://lnk.ynis.fr"
         volumes:
-        - type: bind
-          source: ./data.db
-          target: /usr/src/app/data.db
+            - "./data:/usr/src/app/data"
     

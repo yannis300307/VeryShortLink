@@ -38,7 +38,7 @@ FORBIDDEN_WEBSITES_LIST_PROVIDER = get_env_default("FORBIDDEN_WEBSITES_LIST_PROV
 
 # Init various objects
 app = Flask(__name__, template_folder="frontend/templates")
-db = sqlite3.connect("data.db", check_same_thread=False)
+db = sqlite3.connect("data/data.db", check_same_thread=False)
 cur = db.cursor()
 logger = logging.getLogger("VeryShortLink") # Setup the logger
 logging.basicConfig(
