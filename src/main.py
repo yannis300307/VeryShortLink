@@ -154,8 +154,13 @@ def access_link(id):
         return render_template("link_access_error.html", message="The given link seems to be expired or never existed.")
     
     logger.info(f"{request.remote_addr} redirected. ID: {id}")
+
+    url = urlsafe_b64decode(result[0]).decode("utf-8")
+
+    if not url.startswith("http"):
+        url = "http://" + url
     
-    return redirect(urlsafe_b64decode(result[0]).decode("utf-8"))
+    return redirect(url)
 
 
 @app.route("/api/shortit/<url>")
