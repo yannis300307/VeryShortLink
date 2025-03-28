@@ -4,7 +4,7 @@ services:
         ports:
             - "8082:8080"
         environment:
-            - WEBSITE_URL: "https://lnk.ynis.fr"
+            - WEBSITE_URL = "https://lnk.ynis.fr"
         volumes:
             "./data.db:/usr/src/app/data.db"
     
