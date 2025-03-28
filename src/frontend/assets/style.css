@@ -1,0 +1,153 @@
+@font-face {
+    font-family: default-font;
+    src: url("Coolvetica Rg.otf");
+}
+
+html {height: 100%}
+
+body {
+    background-color: black;
+    color: white;
+    font-family: default-font;
+
+    height: 100%;
+    margin: 0;
+}
+
+#centered_container {
+    flex-direction: column;
+    display: flex;
+    transform: translateY(-10%);
+    align-items: center;
+    justify-content: center;
+
+    height: 100%;
+
+    padding: 20pt;
+}
+
+input {
+    background-color: rgb(10, 10, 10);
+    border: solid 2px grey;
+    border-radius: 20pt;
+    border-top-right-radius: 5pt;
+    border-bottom-right-radius: 5pt;
+    width: 70%;
+    height: 30pt;
+
+    color: white;
+
+    font-size: 20pt;
+    padding: 5pt;
+
+    outline: none;
+
+    transition: background-color 300ms ease, border-color 300ms ease;
+}
+
+input:focus {
+    background-color: rgb(30, 30, 30) !important;
+    border-color: white !important;
+}
+
+input:hover {
+    background-color: rgb(30, 30, 30);
+    border-color: rgb(185, 185, 185);
+}
+
+h1 {
+    font-size: 60pt;
+    margin-left: auto;
+    margin-right: auto;
+
+    text-align: center;
+}
+
+button {
+    height: 43pt;
+    border-radius: 20pt;
+    border-top-left-radius: 5pt;
+    border-bottom-left-radius: 5pt;
+
+    background-color: rgb(10, 10, 10);
+    border: solid 2px grey;
+    color: white;
+
+    margin-left: 2px;
+    padding: 5pt;
+    padding-right: 10pt;
+    font-size: 20pt;
+
+    font-family: default-font;
+    cursor: pointer;
+
+    min-width: max-content;
+}
+
+button:hover {
+    background-color: rgb(30, 30, 30);
+    border-color: rgb(185, 185, 185);
+}
+
+#input-area {
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+}
+
+#info-text {
+    color: gray;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+#output-link {
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 10pt;
+
+    font-size: 30pt;
+    cursor: pointer;
+    text-decoration-line: none;
+    transition: max-height 1s ease;
+    max-height: 50pt;
+    overflow-y: hidden;
+    text-align: center;
+}
+
+#output-link:hover {
+    text-decoration-line: underline;
+}
+
+.hidden {
+    max-height: 0pt !important;
+
+}
+
+.error {
+    font-size: 20pt !important;
+    color: rgb(251, 112, 112);
+    text-decoration: none !important;
+}
+
+@keyframes clicked {
+    0% {
+        color: rgb(0, 183, 0);
+    }
+
+    100% {
+        color: inherit;
+    }
+}
+
+.clicked_link {
+    animation: clicked 1s ease-out;
+}
+
+#error_page_info {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 20pt;
+    color: grey;
+}

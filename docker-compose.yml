@@ -1,0 +1,8 @@
+services:
+    veryshortlink:
+        build: .
+        ports:
+            - "8082:8080"
+        environment:
+            - WEBSITE_URL: "https://lnk.ynis.fr"
+    

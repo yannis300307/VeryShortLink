@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeryShortLink</title>
+    <link href="/assets/style.css" rel="stylesheet" />
+    <meta name="description" content="The simplest way to short your links.">
+    <script defer>
+        document.addEventListener("DOMContentLoaded", () => {
+            const output_link = document.getElementById("output-link");
+            const url_input = document.getElementById("link-input");
+            const submit_button = document.getElementById("submit-button");
+
+            var last_url = "";
+
+            async function submit() {
+                let base_url = url_input.value;
+
+                let response = await fetch("/api/shortit/" + btoa(base_url));
+
+                let data = await response.json();
+                if ("new_url" in data) {
+                    output_link.innerText = data["new_url"];
+                    output_link.classList.remove("hidden");
+                    output_link.classList.remove("error");
+
+                    last_url = data["new_url"];
+                } else if ("error" in data) {
+                    output_link.innerText = data["error"];
+                    output_link.classList.remove("hidden");
+                    output_link.classList.add("error");
+                }
+            }
+
+            function link_to_clipboard() {
+                navigator.clipboard.writeText(last_url).catch(() => {
+                    navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
+                        if (result.state === "granted" || result.state === "prompt") {
+                            navigator.clipboard.writeText(last_url);
+                        }
+                    });
+                });
+
+                output_link.classList.add("clicked_link");
+                setTimeout(() => { output_link.classList.remove("clicked_link") }, 1000);
+            }
+
+            submit_button.addEventListener("click", submit);
+            url_input.addEventListener("keyup", (event) => {
+                if (event.key === "Enter") {
+                    submit();
+                }
+            });
+
+            output_link.addEventListener("click", link_to_clipboard);
+        });
+    </script>
+</head>
+
+<body>
+    <div id="centered_container">
+        <h1>Want to short a link?</h1>
+        <div id="input-area"><input type="text" name="link-input" id="link-input" maxlength="1023"><button
+                id="submit-button">Short
+                it!</button></div>
+        <a id="output-link" title="Click to copy URL" class="hidden">url</a>
+        <p id="info-text">Note that every link that is created here is public. Take care to what you put in here. Links
+            are
+            valid for {{ validity_time }} hours.</p>
+    </div>
+</body>
+
+</html>
