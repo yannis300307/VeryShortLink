@@ -5,7 +5,7 @@ import time
 from flask import Flask, json, send_from_directory, render_template, redirect, request
 import sqlite3
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from urllib import request
+from urllib import request as urlrequest
 import urllib.error
 from waitress import serve
 import os
@@ -51,7 +51,7 @@ def check_table_exists(name):
 def update_forbidden_websites_list():
     """Update the forbidden websit list from the given provider."""
     try:
-        response_data = request.urlopen(FORBIDDEN_WEBSITES_LIST_PROVIDER).read()
+        response_data = urlrequest.urlopen(FORBIDDEN_WEBSITES_LIST_PROVIDER).read()
     except urllib.error.URLError:
         raise Exception("Unable to recover bad websites list : File is unavailable")
     
