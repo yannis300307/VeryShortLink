@@ -1,6 +1,7 @@
 import binascii
 import re
 import string
+import threading
 import time
 from flask import Flask, json, send_from_directory, render_template, redirect, request
 import sqlite3
@@ -31,6 +32,7 @@ FORBIDDEN_WEBSITES_LIST_PROVIDER = os.getenv("FORBIDDEN_WEBSITES_LIST_PROVIDER",
 app = Flask(__name__, template_folder="frontend/templates")
 db = sqlite3.connect("data/data.db", check_same_thread=False)
 cur = db.cursor()
+lock = threading.Lock()
 logger = logging.getLogger("VeryShortLink") # Setup the logger
 logging.basicConfig(
     level=logging.INFO,
@@ -77,10 +79,14 @@ def encode_url(url):
 
 def create_link(base_url):
     """Create a new link, store it in the database and return the id."""
-    cur.execute(f"INSERT INTO Link (endpoint, expiration_date) VALUES(\"{encode_url(base_url)}\", {int(time.time())+EXPIRATION_DELAY})")
-    new_id = cur.execute(f"SELECT MAX(id) FROM Link;").fetchone()[0]
+    try:
+        lock.acquire(True)
+        cur.execute(f"INSERT INTO Link (endpoint, expiration_date) VALUES(\"{encode_url(base_url)}\", {int(time.time())+EXPIRATION_DELAY})")
+        new_id = cur.execute(f"SELECT MAX(id) FROM Link;").fetchone()[0]
+        db.commit()
+    finally:
+        lock.release()
 
-    db.commit()
     logger.info(f"Created new link with id \"{new_id}\" pointing to \"{base_url}\".")
     return get_link_with_id(str(hex(new_id)[2:]))
 
@@ -94,9 +100,14 @@ def check_url_already_exists(url):
     if result is None or len(result) == 0:
         return None
     
-    cur.execute(f"UPDATE Link SET expiration_date = \"{int(time.time())+EXPIRATION_DELAY}\" WHERE id = {result[0]};")
-    db.commit()
-
+    try:
+        lock.acquire(True)
+        cur.execute(f"UPDATE Link SET expiration_date = \"{int(time.time())+EXPIRATION_DELAY}\" WHERE id = {result[0]};")
+    
+        db.commit()
+    finally:
+        lock.release()
+    
     logger.info(f"Renewed expiration date for id {result[0]}.")
 
     return result[0]
@@ -107,8 +118,12 @@ def get_links_amount():
 
 def check_expired():
     """Delete all expired links."""
-    cur.execute(f"DELETE FROM Link WHERE expiration_date < {int(time.time())}")
-    db.commit()
+    try:
+        lock.acquire(True)
+        cur.execute(f"DELETE FROM Link WHERE expiration_date < {int(time.time())}")
+        db.commit()
+    finally:
+        lock.release()
 
 def get_setting(key):
     """Get the settings stored as key-value. Return the value if the key exists or None if it doesn't."""
@@ -167,6 +182,8 @@ def access_link(id):
 def shortit():
     """Private api endpoint to create a new short link."""
     check_expired()
+
+    print(request.headers)
 
     body = request.get_json()
 
