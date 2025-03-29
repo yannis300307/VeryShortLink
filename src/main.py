@@ -1,7 +1,6 @@
 import binascii
 import re
 import string
-import threading
 import time
 from flask import Flask, json, send_from_directory, render_template, redirect, request
 import sqlite3
@@ -37,8 +36,7 @@ BAN_TIME = int(os.getenv("BAN_TIME", "86400"))
 # Init various objects
 app = Flask(__name__, template_folder="frontend/templates")
 db = sqlite3.connect("data/data.db", check_same_thread=False)
-cur = db.cursor()
-lock = threading.Lock()
+
 logger = logging.getLogger("VeryShortLink") # Setup the logger
 logging.basicConfig(
     level=logging.INFO,
@@ -56,6 +54,7 @@ banned_ips = {}
 
 def check_table_exists(name):
     """Return true if the table with the given name already exists in the database."""
+    cur = db.cursor()
     execution = cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';").fetchone()
     return not (execution is None or len(execution) == 0)
 
@@ -88,13 +87,10 @@ def encode_url(url):
 
 def create_link(base_url):
     """Create a new link, store it in the database and return the id."""
-    try:
-        lock.acquire(True)
-        cur.execute(f"INSERT INTO Link (endpoint, expiration_date) VALUES(\"{encode_url(base_url)}\", {int(time.time())+EXPIRATION_DELAY})")
-        new_id = cur.execute(f"SELECT MAX(id) FROM Link;").fetchone()[0]
-        db.commit()
-    finally:
-        lock.release()
+    cur = db.cursor()
+    cur.execute(f"INSERT INTO Link (endpoint, expiration_date) VALUES(\"{encode_url(base_url)}\", {int(time.time())+EXPIRATION_DELAY})")
+    new_id = cur.execute(f"SELECT MAX(id) FROM Link;").fetchone()[0]
+    db.commit()
 
     logger.info(f"Created new link with id \"{new_id}\" pointing to \"{base_url}\".")
     return get_link_with_id(str(hex(new_id)[2:]))
@@ -104,38 +100,35 @@ def get_link_with_id(id):
     return f"{WEBSITE_URL}/{id}"
 
 def check_url_already_exists(url):
+    cur = db.cursor()
     result = cur.execute(f"SELECT id FROM Link WHERE endpoint = \"{encode_url(url)}\";").fetchone()
 
     if result is None or len(result) == 0:
         return None
-    
-    try:
-        lock.acquire(True)
-        cur.execute(f"UPDATE Link SET expiration_date = \"{int(time.time())+EXPIRATION_DELAY}\" WHERE id = {result[0]};")
-    
-        db.commit()
-    finally:
-        lock.release()
-    
+
+    cur.execute(f"UPDATE Link SET expiration_date = \"{int(time.time())+EXPIRATION_DELAY}\" WHERE id = {result[0]};")
+
+    db.commit()
+
     logger.info(f"Renewed expiration date for id {result[0]}.")
 
     return result[0]
 
 def get_links_amount():
     """Return the number of links that are in the database."""
+    cur = db.cursor()
     return cur.execute("SELECT COUNT(id) FROM Link;").fetchone()[0]
 
 def check_expired():
     """Delete all expired links."""
-    try:
-        lock.acquire(True)
-        cur.execute(f"DELETE FROM Link WHERE expiration_date < {int(time.time())}")
-        db.commit()
-    finally:
-        lock.release()
+    cur = db.cursor()
+    cur.execute(f"DELETE FROM Link WHERE expiration_date < {int(time.time())}")
+    db.commit()
+
 
 def get_setting(key):
     """Get the settings stored as key-value. Return the value if the key exists or None if it doesn't."""
+    cur = db.cursor()
     result = cur.execute(f"SELECT value FROM Setting WHERE key = \"{key}\"").fetchone()
     if result is None: return None
     if len(result) == 0: return None
@@ -143,6 +136,7 @@ def get_setting(key):
 
 def set_setting(key, value):
     """Set a setting stored as key-value and save it to the database."""
+    cur = db.cursor()
     cur.execute(f"INSERT INTO Setting (key, value) VALUES(\"{key}\", \"{value}\") ON DUPLICATE KEY UPDATE value=\"{value}\";")
     db.commit()
 
@@ -164,6 +158,7 @@ def robots():
 @app.route("/<id>")
 def access_link(id):
     """Redirect the user to the endpoint url if the given id exists."""
+    cur = db.cursor()
     check_expired()
 
     id = id.lower()
@@ -260,10 +255,11 @@ def shortit():
 
 if __name__ == "__main__":
     # Init the tables if they doesn't exist yet in the database
+    gcur = db.cursor()
     if not check_table_exists("Link"):
-        cur.execute("CREATE TABLE Link(id INTEGER PRIMARY KEY, endpoint TEXT, expiration_date INT);")
+        gcur.execute("CREATE TABLE Link(id INTEGER PRIMARY KEY, endpoint TEXT, expiration_date INT);")
     if not check_table_exists("Setting"):
-        cur.execute("CREATE TABLE Setting(key VARCHAR(32) PRIMARY KEY NOT NULL, value VARCHAR(32));")
+        gcur.execute("CREATE TABLE Setting(key VARCHAR(32) PRIMARY KEY NOT NULL, value VARCHAR(32));")
 
     update_forbidden_websites_list()
     
