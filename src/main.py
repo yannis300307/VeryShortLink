@@ -27,6 +27,12 @@ WEBSITE_URL = os.getenv("WEBSITE_URL", "localhost")
 # A forbidden websites list provider because we don't want to link to bad websites.
 FORBIDDEN_WEBSITES_LIST_PROVIDER = os.getenv("FORBIDDEN_WEBSITES_LIST_PROVIDER", "https://raw.githubusercontent.com/elbkr/bad-websites/refs/heads/main/websites.json")
 
+# The maximum number of links that a single ip can create in one hour
+MAX_LINK_PER_HOUR = int(os.getenv("MAX_LINK_PER_HOUR", "20"))
+
+# How long is banned the user if it excceded rate limit
+BAN_TIME = int(os.getenv("BAN_TIME", "86400"))
+
 
 # Init various objects
 app = Flask(__name__, template_folder="frontend/templates")
@@ -44,6 +50,9 @@ logging.basicConfig(
 )
 
 forbidden_websites = []
+
+rate_limit = {}
+banned_ips = {}
 
 def check_table_exists(name):
     """Return true if the table with the given name already exists in the database."""
@@ -177,14 +186,44 @@ def access_link(id):
     
     return redirect(url)
 
+def can_create(ip):
+    if ip in banned_ips:
+        if time.time() > banned_ips[ip]:
+            banned_ips.pop(ip)
+    
+    if ip in banned_ips: return False
+
+    for all in rate_limit:
+        if time.time() > rate_limit[all][1]:
+            rate_limit.pop(all)
+
+    if ip not in rate_limit:
+        rate_limit[ip] = [1, time.time()+3600]
+        return True
+    else:
+        rate_limit[ip][0] += 1
+    
+    if rate_limit[ip][0] > MAX_LINK_PER_HOUR:
+        banned_ips[ip] = time.time()+BAN_TIME
+        logger.warning(f"Ip {ip} as been banned due to spam.")
+        return False
+    return True
 
 @app.route("/api/shortit/", methods=["POST"])
 def shortit():
     """Private api endpoint to create a new short link."""
+
+    if request.headers.get("Cf-Connecting-Ip") is None:
+        can = can_create(request.remote_addr)
+    else:
+        can = can_create(request.headers.get("Cf-Connecting-Ip"))
+
+    if not can:
+        return {"error": "Rate limit exceeded."}
+    
     check_expired()
 
-    logger.info("headers :", request.headers.keys)
-
+    # Check rate limit : "Cf-Connecting-Ip" header
     body = request.get_json()
 
     if "url" in body:
@@ -208,9 +247,9 @@ def shortit():
     if not check_website_is_allowed(url):
         return {"error": "This website is not allowed."}
     
-    # Check if we don't exced the maximum amount of links we can create
+    # Check if we don't exceed the maximum amount of links we can create
     if get_links_amount() > MAX_LINK_AMOUNT:
-        return {"error" : "The website exceded the maximum of link that can be created. We may be experiencing bot spams issues. Please wait a few minutes before retrying."}
+        return {"error" : "The website exceeded the maximum of link that can be created. We may be experiencing bot spams issues. Please wait a few minutes before retrying."}
     
     already_exists = check_url_already_exists(url)
     if already_exists is not None:
