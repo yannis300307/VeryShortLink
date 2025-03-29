@@ -163,45 +163,43 @@ def access_link(id):
     return redirect(url)
 
 
-@app.route("/api/shortit/<url>")
-def shortit(url):
+@app.route("/api/shortit/", methods=["POST"])
+def shortit():
     """Private api endpoint to create a new short link."""
     check_expired()
 
-    # Decode the original URL and handle potential errors 
-    try:
-        decoded = urlsafe_b64decode(url)
-    except binascii.Error:
-        return {"error": "Invalid base64."}
+    body = request.get_json()
+
+    if "url" in body:
+        url = body["url"]
+    else:
+        return {"error": "Invalid request body."}
     
-    # Decode url from bytes to str and handle errors
-    try:
-        plain = decoded.decode("utf-8")
-    except UnicodeDecodeError:
-        return {"error": "Url contains non utf-8 characters."}
+    if not isinstance(body["url"], str):
+        return {"error": "Wrong data type for URL."}
     
     # Check the lenght of the URL. We don't want URLs to be to long as we don't want people 
     # using our service to store custom data. And it also prevents the database to became enormous.
-    if len(plain) >= 1024:
+    if len(url) >= 1024:
         return {"error": "URL is too long. Please use URL that is shorter than 1024 characteres."}
     
     # Check if the data is a valid URL
-    if re.match(r"[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=\-]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)", plain) is None:
+    if re.match(r"[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=\-]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)", url) is None:
         return {"error": "The given URL doesn't seem to be a valid URL."}
     
     # Check if the website is forbidden
-    if not check_website_is_allowed(plain):
+    if not check_website_is_allowed(url):
         return {"error": "This website is not allowed."}
     
     # Check if we don't exced the maximum amount of links we can create
     if get_links_amount() > MAX_LINK_AMOUNT:
         return {"error" : "The website exceded the maximum of link that can be created. We may be experiencing bot spams issues. Please wait a few minutes before retrying."}
     
-    already_exists = check_url_already_exists(plain)
+    already_exists = check_url_already_exists(url)
     if already_exists is not None:
         return {"new_url": get_link_with_id(already_exists)}
     else:
-        return {"new_url": create_link(plain)}
+        return {"new_url": create_link(url)}
     
 
 if __name__ == "__main__":

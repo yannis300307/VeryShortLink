@@ -18,7 +18,15 @@
             async function submit() {
                 let base_url = url_input.value;
 
-                let response = await fetch("/api/shortit/" + btoa(base_url));
+                if (base_url < 3) { return }
+
+                let response = await fetch("/api/shortit/", {
+                    method: 'POST',
+                    body: JSON.stringify({ url: base_url }),
+                    headers: {
+                        "Content-Type": "application/json",
+                    }
+                });
 
                 let data = await response.json();
                 if ("new_url" in data) {
