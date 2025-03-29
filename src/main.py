@@ -26,11 +26,17 @@ WEBSITE_URL = os.getenv("WEBSITE_URL", "localhost")
 # A forbidden websites list provider because we don't want to link to bad websites.
 FORBIDDEN_WEBSITES_LIST_PROVIDER = os.getenv("FORBIDDEN_WEBSITES_LIST_PROVIDER", "https://raw.githubusercontent.com/elbkr/bad-websites/refs/heads/main/websites.json")
 
+# The maximum number of links that a single ip can create in one hour
+MAX_LINK_PER_HOUR = int(os.getenv("MAX_LINK_PER_HOUR", "20"))
+
+# How long is banned the user if it excceded rate limit
+BAN_TIME = int(os.getenv("BAN_TIME", "86400"))
+
 
 # Init various objects
 app = Flask(__name__, template_folder="frontend/templates")
 db = sqlite3.connect("data/data.db", check_same_thread=False)
-cur = db.cursor()
+
 logger = logging.getLogger("VeryShortLink") # Setup the logger
 logging.basicConfig(
     level=logging.INFO,
@@ -43,8 +49,12 @@ logging.basicConfig(
 
 forbidden_websites = []
 
+rate_limit = {}
+banned_ips = {}
+
 def check_table_exists(name):
     """Return true if the table with the given name already exists in the database."""
+    cur = db.cursor()
     execution = cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';").fetchone()
     return not (execution is None or len(execution) == 0)
 
@@ -77,10 +87,11 @@ def encode_url(url):
 
 def create_link(base_url):
     """Create a new link, store it in the database and return the id."""
+    cur = db.cursor()
     cur.execute(f"INSERT INTO Link (endpoint, expiration_date) VALUES(\"{encode_url(base_url)}\", {int(time.time())+EXPIRATION_DELAY})")
     new_id = cur.execute(f"SELECT MAX(id) FROM Link;").fetchone()[0]
-
     db.commit()
+
     logger.info(f"Created new link with id \"{new_id}\" pointing to \"{base_url}\".")
     return get_link_with_id(str(hex(new_id)[2:]))
 
@@ -89,12 +100,14 @@ def get_link_with_id(id):
     return f"{WEBSITE_URL}/{id}"
 
 def check_url_already_exists(url):
+    cur = db.cursor()
     result = cur.execute(f"SELECT id FROM Link WHERE endpoint = \"{encode_url(url)}\";").fetchone()
 
     if result is None or len(result) == 0:
         return None
-    
+
     cur.execute(f"UPDATE Link SET expiration_date = \"{int(time.time())+EXPIRATION_DELAY}\" WHERE id = {result[0]};")
+
     db.commit()
 
     logger.info(f"Renewed expiration date for id {result[0]}.")
@@ -103,15 +116,19 @@ def check_url_already_exists(url):
 
 def get_links_amount():
     """Return the number of links that are in the database."""
+    cur = db.cursor()
     return cur.execute("SELECT COUNT(id) FROM Link;").fetchone()[0]
 
 def check_expired():
     """Delete all expired links."""
+    cur = db.cursor()
     cur.execute(f"DELETE FROM Link WHERE expiration_date < {int(time.time())}")
     db.commit()
 
+
 def get_setting(key):
     """Get the settings stored as key-value. Return the value if the key exists or None if it doesn't."""
+    cur = db.cursor()
     result = cur.execute(f"SELECT value FROM Setting WHERE key = \"{key}\"").fetchone()
     if result is None: return None
     if len(result) == 0: return None
@@ -119,6 +136,7 @@ def get_setting(key):
 
 def set_setting(key, value):
     """Set a setting stored as key-value and save it to the database."""
+    cur = db.cursor()
     cur.execute(f"INSERT INTO Setting (key, value) VALUES(\"{key}\", \"{value}\") ON DUPLICATE KEY UPDATE value=\"{value}\";")
     db.commit()
 
@@ -140,6 +158,7 @@ def robots():
 @app.route("/<id>")
 def access_link(id):
     """Redirect the user to the endpoint url if the given id exists."""
+    cur = db.cursor()
     check_expired()
 
     id = id.lower()
@@ -162,12 +181,44 @@ def access_link(id):
     
     return redirect(url)
 
+def can_create(ip):
+    if ip in banned_ips:
+        if time.time() > banned_ips[ip]:
+            banned_ips.pop(ip)
+    
+    if ip in banned_ips: return False
+
+    for all in rate_limit:
+        if time.time() > rate_limit[all][1]:
+            rate_limit.pop(all)
+
+    if ip not in rate_limit:
+        rate_limit[ip] = [1, time.time()+3600]
+        return True
+    else:
+        rate_limit[ip][0] += 1
+    
+    if rate_limit[ip][0] > MAX_LINK_PER_HOUR:
+        banned_ips[ip] = time.time()+BAN_TIME
+        logger.warning(f"Ip {ip} as been banned due to spam.")
+        return False
+    return True
 
 @app.route("/api/shortit/", methods=["POST"])
 def shortit():
     """Private api endpoint to create a new short link."""
+
+    if request.headers.get("Cf-Connecting-Ip") is None:
+        can = can_create(request.remote_addr)
+    else:
+        can = can_create(request.headers.get("Cf-Connecting-Ip"))
+
+    if not can:
+        return {"error": "Rate limit exceeded."}
+    
     check_expired()
 
+    # Check rate limit : "Cf-Connecting-Ip" header
     body = request.get_json()
 
     if "url" in body:
@@ -191,9 +242,9 @@ def shortit():
     if not check_website_is_allowed(url):
         return {"error": "This website is not allowed."}
     
-    # Check if we don't exced the maximum amount of links we can create
+    # Check if we don't exceed the maximum amount of links we can create
     if get_links_amount() > MAX_LINK_AMOUNT:
-        return {"error" : "The website exceded the maximum of link that can be created. We may be experiencing bot spams issues. Please wait a few minutes before retrying."}
+        return {"error" : "The website exceeded the maximum of link that can be created. We may be experiencing bot spams issues. Please wait a few minutes before retrying."}
     
     already_exists = check_url_already_exists(url)
     if already_exists is not None:
@@ -204,10 +255,11 @@ def shortit():
 
 if __name__ == "__main__":
     # Init the tables if they doesn't exist yet in the database
+    gcur = db.cursor()
     if not check_table_exists("Link"):
-        cur.execute("CREATE TABLE Link(id INTEGER PRIMARY KEY, endpoint TEXT, expiration_date INT);")
+        gcur.execute("CREATE TABLE Link(id INTEGER PRIMARY KEY, endpoint TEXT, expiration_date INT);")
     if not check_table_exists("Setting"):
-        cur.execute("CREATE TABLE Setting(key VARCHAR(32) PRIMARY KEY NOT NULL, value VARCHAR(32));")
+        gcur.execute("CREATE TABLE Setting(key VARCHAR(32) PRIMARY KEY NOT NULL, value VARCHAR(32));")
 
     update_forbidden_websites_list()
     
