@@ -183,7 +183,7 @@ def shortit():
     """Private api endpoint to create a new short link."""
     check_expired()
 
-    print(request.headers)
+    print("headers :", request.headers.keys)
 
     body = request.get_json()
 
