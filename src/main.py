@@ -188,7 +188,7 @@ def can_create(ip):
     
     if ip in banned_ips: return False
 
-    for all in rate_limit:
+    for all in list(rate_limit.keys()):
         if time.time() > rate_limit[all][1]:
             rate_limit.pop(all)
 
