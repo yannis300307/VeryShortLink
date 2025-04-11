@@ -65,24 +65,27 @@ h1 {
 }
 
 button {
-    height: 43pt;
     border-radius: 20pt;
-    border-top-left-radius: 5pt;
-    border-bottom-left-radius: 5pt;
 
     background-color: rgb(10, 10, 10);
     border: solid 2px grey;
     color: white;
 
-    margin-left: 2px;
     padding: 5pt;
-    padding-right: 10pt;
     font-size: 20pt;
 
     font-family: default-font;
     cursor: pointer;
 
     min-width: max-content;
+}
+
+#submit-button {
+    border-top-left-radius: 5pt;
+    border-bottom-left-radius: 5pt;
+    height: 43pt;
+    margin-left: 2px;
+    padding-right: 10pt;
 }
 
 button:hover {
@@ -110,14 +113,18 @@ button:hover {
 
     font-size: 30pt;
     cursor: pointer;
-    text-decoration-line: none;
     transition: max-height 1s ease;
     max-height: 50pt;
     overflow-y: hidden;
     text-align: center;
 }
 
-#output-link:hover {
+a {
+    color: white;
+    text-decoration-line: none;
+}
+
+a:hover {
     text-decoration-line: underline;
 }
 
@@ -151,4 +158,51 @@ button:hover {
     text-align: center;
     font-size: 20pt;
     color: grey;
+}
+
+.link-list-element {
+    border-radius: 20pt;
+    background-color: rgb(10, 10, 10);
+    border: solid 2px grey;
+    color: white;
+
+    padding: 5pt;
+    font-size: 20pt;
+    padding-left: 10pt;
+
+    font-family: default-font;
+    cursor: pointer;
+
+    min-width: max-content;
+    height: fit-content;
+    display: flex;
+    align-items: center;
+}
+
+.link-list-element:hover {
+    background-color: rgb(30, 30, 30);
+    border-color: rgb(185, 185, 185);
+}
+
+.link-list-element img {
+    height: 100%;
+}
+.link-list-element button {
+    height: 30pt;
+    border-radius: 15pt;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#link-list {
+    padding: 20pt;
+}
+
+.link-list-element-url {
+    overflow: hidden;
+    text-wrap: nowrap;
+    text-align: end;
+    max-width: 30%;
 }

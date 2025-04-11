@@ -145,6 +145,12 @@ def index():
     """The main page of the website."""
     return render_template("index.html", validity_time=humanfriendly.format_timespan(EXPIRATION_DELAY))
 
+@app.route("/admin_panel")
+def admin_panel():
+    """The admin panel page."""
+    return render_template("admin_panel.html")
+
+
 @app.route("/assets/<file>")
 def asset(file):
     """Access an asset from the assets directory."""
