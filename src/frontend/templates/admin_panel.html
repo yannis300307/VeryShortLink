@@ -6,11 +6,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <link href="/assets/style.css" rel="stylesheet" />
+    <script>
+        function check_empty_list() {
+            if (document.getElementById("link-list").childElementCount === 0) document.getElementById("link-list").innerHTML = '<p id="link-list-no-links">There is no links in database</p>';
+        }
+        async function delete_link(id) {
+            let response = await fetch("/api/delete_link", {
+                method: 'POST',
+                body: JSON.stringify({ "id": id }),
+                headers: {
+                    "Content-Type": "application/json",
+                }
+            });
+            if (await response.text() === "ok") {
+                document.getElementById("link-id" + id).remove();
+                check_empty_list();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            check_empty_list();
+        });
+    </script>
 </head>
 
 <body>
+    <h1>Manage URLs</h1>
     <div id="link-list">
-        <div class="link-list-element"><a href="aaaa" class="link-list-element-url">link here gonna be sometime but lorum ipsum ? yes no that is the question</a><button><img src="/assets/cross.svg"></button></div>
+        {% for link in links_list %}
+        <div class="link-list-element" id="link-id{{ link["id"] }}"><span class="link-list-element-id">id: {{
+                link["id"] }}</span><a href="{{ link[" original_url"] }}" class="link-list-element-url">{{
+                link["original_url"] }}</a><span>expiration: {{ link["expiration_time"] }}</span><button
+                onclick="delete_link({{ link["id"] }})"><img src="/assets/cross.svg"></button></div>
+        {% endfor %}
     </div>
 </body>
 

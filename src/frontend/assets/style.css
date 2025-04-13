@@ -62,6 +62,7 @@ h1 {
     margin-right: auto;
 
     text-align: center;
+    margin-top: 0;
 }
 
 button {
@@ -177,6 +178,7 @@ a:hover {
     height: fit-content;
     display: flex;
     align-items: center;
+    margin: 5pt;
 }
 
 .link-list-element:hover {
@@ -198,11 +200,23 @@ a:hover {
 
 #link-list {
     padding: 20pt;
+    display: flex;
+    flex-direction: column;
 }
 
 .link-list-element-url {
     overflow: hidden;
     text-wrap: nowrap;
-    text-align: end;
-    max-width: 30%;
+    width: 30%;
+    margin-left: 20pt;
+    margin-right: 20pt;
+}
+
+.link-list-element-id {
+    width: 80pt;
+}
+
+#link-list-no-links {
+    margin-left: auto;
+    margin-right: auto;
 }

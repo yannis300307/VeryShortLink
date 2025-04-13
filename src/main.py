@@ -32,6 +32,9 @@ MAX_LINK_PER_HOUR = int(os.getenv("MAX_LINK_PER_HOUR", "20"))
 # How long is banned the user if it excceded rate limit
 BAN_TIME = int(os.getenv("BAN_TIME", "86400"))
 
+# Admin panel password. Admin Panel will not be accessible if no password is set
+ADMIN_PASSWORD = os.getenv("WEBSITE_URL", "")
+
 
 # Init various objects
 app = Flask(__name__, template_folder="frontend/templates")
@@ -114,6 +117,20 @@ def check_url_already_exists(url):
 
     return result[0]
 
+def get_links_info():
+    cur = db.cursor()
+    result = cur.execute(f"SELECT id, expiration_date, endpoint FROM Link;").fetchall()
+
+    if result is None or len(result) == 0:
+        return []
+    
+    return result
+
+def delete_link_from_db(lid: str):
+    cur = db.cursor()
+    cur.execute(f"DELETE FROM Link WHERE id={lid};")
+
+
 def get_links_amount():
     """Return the number of links that are in the database."""
     cur = db.cursor()
@@ -148,7 +165,16 @@ def index():
 @app.route("/admin_panel")
 def admin_panel():
     """The admin panel page."""
-    return render_template("admin_panel.html")
+    current_time = time.time()
+    check_expired()
+
+    links_list = []
+    for link in get_links_info():
+        links_list.append(
+            {"original_url": urlsafe_b64decode(link[2]).decode("utf-8"), "expiration_time": humanfriendly.format_timespan(link[1]-current_time), "id": link[0]}
+        )
+    
+    return render_template("admin_panel.html", links_list=links_list)
 
 
 @app.route("/assets/<file>")
@@ -257,6 +283,18 @@ def shortit():
         return {"new_url": get_link_with_id(already_exists)}
     else:
         return {"new_url": create_link(url)}
+
+@app.route("/api/delete_link", methods=["POST"])
+def delete_link():
+    """Allow admins to delete a link from the admin panel."""
+    body = request.get_json()
+
+    if "id" in body and isinstance(body["id"], int):
+        delete_link_from_db(str(body["id"]))
+    else:
+        return "error: invalid body"
+    return "ok"
+
     
 
 if __name__ == "__main__":
